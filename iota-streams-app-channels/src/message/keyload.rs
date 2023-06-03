@@ -127,7 +127,7 @@ where
                 {
                     match &id {
                         Identifier::PskId(_pskid) => ctx
-                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
+                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(store_id.as_slice()))))?
                             .commit()?
                             .mask(&self.key)?,
                         Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id.as_ref()) {
@@ -178,7 +178,7 @@ where
                 {
                     match &id {
                         Identifier::PskId(_pskid) => ctx
-                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(&store_id))))?
+                            .absorb(External(<&NBytes<psk::PskSize>>::from(<&[u8]>::from(store_id.as_slice()))))?
                             .commit()?
                             .mask(&self.key)?,
                         Identifier::EdPubKey(_pk) => match <[u8; 32]>::try_from(store_id.as_ref()) {
