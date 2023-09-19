@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use crate::{
     address::Address,
     error::{Error, Result},
+    message::TransportMessage,
 };
 
 /// Network transport abstraction.
@@ -38,6 +39,8 @@ pub trait Transport<'a> {
         if let Some(msg) = msgs.pop() {
             match msgs.is_empty() {
                 true => Ok(msg),
+                // TODO - CGE: AddressError should be split into errors AddressNotFound and FoundMultipleMessages
+                //             Currently only the comment string can be used to distinguish between both cases
                 false => Err(Error::AddressError("More than one found", address)),
             }
         } else {
@@ -63,6 +66,22 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Tsp::Msg>> {
         self.borrow_mut().recv_messages(address).await
     }
+}
+
+/// Interface for message indexing services.
+/// Implementations of the Transport trait need to index all transported messages by Address
+/// msg_index values (return value of the Address::to_msg_index() function).
+/// For transport media that don't allow indexes for custom message tags or custom ids,
+/// (example: IOTA tangle), an additional indexing service is needed.
+#[async_trait(?Send)]
+pub trait MessageIndex<Message = TransportMessage> {
+    /// Return all messages that match the specified msg_index.
+    async fn get_messages_by_msg_index(&self, msg_index: [u8; 32]) -> Result<Vec<Message>>;
+    /// Indexing services may need to modify the msg_index, example given for filtering
+    /// purposes. The get_tag_value() function should be used by transport Client implementations
+    /// to fetch the final value that is used to tag the message before it is send via the transport
+    /// medium.
+    fn get_tag_value(&self, msg_index: [u8; 32]) -> Result<Vec<u8>>;
 }
 
 /// Localised mapping for tests and simulations

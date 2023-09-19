@@ -22,6 +22,8 @@ utangle-client = ["lets/utangle-client"]
 tangle-client = ["lets/tangle-client"]
 # Enable re-export of wasm-compatible IOTA-Tangle transport client from LETS (incompatile with `tangle-client` feature due to `iota-client/async` using `tokio`)
 tangle-client-wasm = ["lets/tangle-client-wasm"]
+# Absolute minimum implementation to be used with custom transport clients
+no-client = ["lets/no-client"]
 
 [dependencies]
 # Local dependencies

@@ -18,7 +18,6 @@ extern crate alloc;
 extern crate std;
 
 pub mod error;
-use error::Error;
 
 /// Core utility tools (spongos/prp/prng)
 mod core;

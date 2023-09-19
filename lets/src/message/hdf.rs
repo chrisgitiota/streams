@@ -227,7 +227,7 @@ where
     F: PRP,
     IS: io::IStream,
 {
-    async fn unwrap(&mut self, mut hdf: &mut HDF) -> SpongosResult<&mut Self> {
+    async fn unwrap(&mut self, hdf: &mut HDF) -> SpongosResult<&mut Self> {
         let mut encoding = Uint8::default();
         let mut version = Uint8::default();
         // [message_type x 4][reserved x 2][payload_length x 2]

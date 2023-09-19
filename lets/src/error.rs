@@ -113,7 +113,7 @@ pub enum Error {
 
     #[cfg(any(feature = "tangle-client", feature = "tangle-client-wasm"))]
     #[error("Iota client error for {0}: {1}")]
-    IotaClient(&'static str, iota_client::Error),
+    IotaClient(&'static str, iota_sdk::client::error::Error),
 
     #[error("message '{0}' not found in {1}")]
     MessageMissing(Address, &'static str),

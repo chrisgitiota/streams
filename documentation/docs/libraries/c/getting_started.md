@@ -22,8 +22,8 @@ Update the flags in the `CMakeLists.txt` and run ```cmake .``` to
 prepare the installation files. 
 
 #### Options for CMakeLlists.txt
-- `NO_STD`: Enable no_std build, without iota_client (when ON, `SYNC_CLIENT` isnt supported)
-- `SYNC_CLIENT`: Enable sync transport via iota_client, otherwise it's going to be Bucket which can only be used for tests
+- `NO_STD`: Enable no_std build, without iota_sdk (when ON, `SYNC_CLIENT` isnt supported)
+- `SYNC_CLIENT`: Enable sync transport via iota_sdk client, otherwise it's going to be Bucket which can only be used for tests
 - `STATIC`: Build static library when ON, otherwise dynamic library
 - `RELEASE`: Build in release or debug mode (when ON, builds release, when OFF, build debug)
 

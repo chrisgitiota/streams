@@ -7,13 +7,18 @@ use core::{
 
 // 3rd-party
 use async_trait::async_trait;
-use futures::{
-    future::{ready, try_join_all},
-    TryFutureExt,
-};
 
 // IOTA
-use iota_client::bee_message::{payload::Payload, Message as IotaMessage};
+use iota_sdk::{
+    client::{
+        Client as IotaClient,
+        builder::ClientBuilder
+    },
+    types::block::{
+        Block,
+        payload::Payload,
+    }
+};
 
 // Streams
 
@@ -22,56 +27,63 @@ use crate::{
     address::Address,
     error::{Error, Result},
     message::TransportMessage,
-    transport::Transport,
+    transport::{
+        Transport,
+        MessageIndex,
+    },
 };
 
 /// A [`Transport`] Client for sending and retrieving binary messages from an `IOTA Tangle` node.
 /// This Client uses the [iota.rs](https://github.com/iotaledger/iota.rs) Client implementation.
 #[derive(Debug)]
-pub struct Client<Message = TransportMessage, SendResponse = TransportMessage>(
-    iota_client::Client,
-    PhantomData<(Message, SendResponse)>,
-);
+pub struct Client<MsgIndex, Message = TransportMessage, SendResponse = TransportMessage> {
+    iota_client: IotaClient,
+    msg_index: MsgIndex,
+    _phantom: PhantomData<(Message, SendResponse)>,
+}
 
-impl<Message, SendResponse> Client<Message, SendResponse> {
+impl<MsgIndex, Message, SendResponse> Client<MsgIndex, Message, SendResponse> {
     /// Create an instance of [`Client`] with an  explicit client
-    pub fn new(client: iota_client::Client) -> Self {
-        Self(client, PhantomData)
+    pub fn new(client: IotaClient, msg_index: MsgIndex) -> Self {
+        Self{iota_client: client, msg_index, _phantom: PhantomData}
     }
 
     /// Shortcut to create an instance of [`Client`] connecting to a node with default parameters
     ///
     /// # Arguments
     /// * `node_url`: URL endpoint for node operations
-    pub async fn for_node(node_url: &str) -> Result<Client<Message, SendResponse>> {
-        Ok(Self(
-            iota_client::ClientBuilder::new()
+    pub async fn for_node(node_url: &str, msg_index: MsgIndex) -> Result<Client<MsgIndex, Message, SendResponse>> {
+        Ok(Self {
+            iota_client: ClientBuilder::new()
                 .with_node(node_url)
-                .map_err(|e| Error::IotaClient("building client", e))?
+                .map_err( | e| Error::IotaClient("building client",
+                e)) ?
                 .with_local_pow(true)
                 .finish()
                 .await
-                .map_err(|e| Error::External(e.into()))?,
-            PhantomData,
-        ))
+                .map_err( | e| Error::External(e.into())) ?,
+            msg_index,
+            _phantom: PhantomData,
+        })
     }
 
-    /// Returns a reference to the `IOTA` [Client](`iota_client::Client`)
-    pub fn client(&self) -> &iota_client::Client {
-        &self.0
+    /// Returns a reference to the `IOTA` [Client](`IotaClient`)
+    pub fn client(&self) -> &IotaClient {
+        &self.iota_client
     }
 
-    /// Returns a mutable reference to the `IOTA` [Client](`iota_client::Client`)
-    pub fn client_mut(&mut self) -> &mut iota_client::Client {
-        &mut self.0
+    /// Returns a mutable reference to the `IOTA` [Client](`IotaClient`)
+    pub fn client_mut(&mut self) -> &mut IotaClient {
+        &mut self.iota_client
     }
 }
 
 #[async_trait(?Send)]
-impl<Message, SendResponse> Transport<'_> for Client<Message, SendResponse>
+impl<MsgIndex, Message, SendResponse> Transport<'_> for Client<MsgIndex, Message, SendResponse>
 where
-    Message: Into<Vec<u8>> + TryFrom<IotaMessage, Error = crate::error::Error>,
-    SendResponse: TryFrom<IotaMessage, Error = crate::error::Error>,
+    Message: Into<Vec<u8>> + TryFrom<Block, Error = crate::error::Error>,
+    SendResponse: TryFrom<Block, Error = crate::error::Error>,
+    MsgIndex: MessageIndex<Message>
 {
     type Msg = Message;
     type SendResponse = SendResponse;
@@ -85,9 +97,10 @@ where
     where
         Message: 'async_trait,
     {
-        self.client()
-            .message()
-            .with_index(address.to_msg_index())
+        let tag = self.msg_index.get_tag_value(address.to_msg_index())?;
+        self.iota_client
+            .build_block()
+            .with_tag(tag)
             .with_data(msg.into())
             .finish()
             .await
@@ -101,39 +114,29 @@ where
     /// # Arguments
     /// * `address`: The address of the message to retrieve.
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
-        let msg_ids = self
-            .client()
-            .get_message()
-            .index(address.to_msg_index())
-            .await
-            .map_err(|e| Error::IotaClient("get messages by index", e))?;
+        let msgs = self
+            .msg_index
+            .get_messages_by_msg_index(address.to_msg_index())
+            .await?;
 
-        if msg_ids.is_empty() {
+        if msgs.is_empty() {
             return Err(Error::MessageMissing(address, "transport"));
         }
 
-        let msgs = try_join_all(msg_ids.iter().map(|msg| {
-            self.client()
-                .get_message()
-                .data(msg)
-                .map_err(|e| Error::IotaClient("receiving message", e))
-                .and_then(|iota_message| ready(iota_message.try_into()))
-        }))
-        .await?;
         Ok(msgs)
     }
 }
 
-impl TryFrom<IotaMessage> for TransportMessage {
+impl TryFrom<Block> for TransportMessage {
     type Error = crate::error::Error;
-    fn try_from(message: IotaMessage) -> Result<Self> {
-        if let Some(Payload::Indexation(indexation)) = message.payload() {
-            Ok(Self::new(indexation.data().into()))
+    fn try_from(block: Block) -> Result<Self> {
+        if let Some(Payload::TaggedData(tagged_data)) = block.payload() {
+            Ok(Self::new(tagged_data.data().into()))
         } else {
             Err(Error::Malformed(
                 "payload from the Tangle",
-                "IndexationPayload",
-                alloc::string::ToString::to_string(&message.id().0),
+                "TaggedData",
+                alloc::string::ToString::to_string(&block.id()),
             ))
         }
     }
@@ -163,7 +166,7 @@ mod tests {
                         AppAddr::default(),
                         &Identifier::default(),
                         &Topic::default(),
-                        Utc::now().timestamp_millis() as usize,
+                        Utc::now().timestamp_millis() as u32,
                     ),
                 ),
                 msg.clone(),

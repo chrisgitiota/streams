@@ -26,12 +26,12 @@ impl TransportMessage {
     }
 
     /// Returns a reference to the body of the message
-    pub(crate) fn body(&self) -> &Vec<u8> {
+    pub fn body(&self) -> &Vec<u8> {
         &self.0
     }
 
     /// Consumes the [`TransportMessage`], returning the body of the message
-    pub(crate) fn into_body(self) -> Vec<u8> {
+    pub fn into_body(self) -> Vec<u8> {
         self.0
     }
 }
