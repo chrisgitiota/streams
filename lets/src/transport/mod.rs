@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Network transport abstraction.
-/// Parametrized by the type of message addresss.
+/// Parametrized by the type of message address.
 /// Message address is used to identify/locate a message (eg. like URL for HTTP).
 #[async_trait(?Send)]
 pub trait Transport<'a> {

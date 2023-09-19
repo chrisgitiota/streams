@@ -120,7 +120,7 @@ where
             .await?;
 
         if msgs.is_empty() {
-            return Err(Error::MessageMissing(address, "transport"));
+            return Err(Error::AddressError("No message found", address));
         }
 
         Ok(msgs)
