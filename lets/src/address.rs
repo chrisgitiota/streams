@@ -245,7 +245,7 @@ impl MsgId {
         Self(bytes)
     }
 
-    pub fn gen(appaddr: AppAddr, identifier: &Identifier, topic: &Topic, seq_num: usize) -> MsgId {
+    pub fn gen(appaddr: AppAddr, identifier: &Identifier, topic: &Topic, seq_num: u32) -> MsgId {
         let mut s = Spongos::<KeccakF1600>::init();
         s.absorb(appaddr);
         s.absorb(identifier);

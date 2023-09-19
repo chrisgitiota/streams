@@ -860,7 +860,7 @@ where
         let topic = topic.into();
         // Generate stream address
         let stream_base_address = AppAddr::gen(&identifier, &topic);
-        let stream_rel_address = MsgId::gen(stream_base_address, &identifier, &topic, INIT_MESSAGE_NUM);
+        let stream_rel_address = MsgId::gen(stream_base_address, &identifier, &topic, INIT_MESSAGE_NUM as u32);
         let stream_address = Address::new(stream_base_address, stream_rel_address);
 
         // Prepare HDF and PCF
@@ -941,7 +941,7 @@ where
         let user_cursor = self
             .next_cursor(&prev_topic)
             .map_err(|_| Error::NoCursor(prev_topic.clone()))?;
-        let msgid = MsgId::gen(stream_address.base(), &identifier, &prev_topic, user_cursor);
+        let msgid = MsgId::gen(stream_address.base(), &identifier, &prev_topic, user_cursor as u32);
         let address = Address::new(stream_address.base(), msgid);
 
         // Prepare HDF and PCF
@@ -1019,7 +1019,7 @@ where
         let base_branch = &self.state.base_branch;
         // Link message to channel announcement
         let link_to = stream_address.relative();
-        let rel_address = MsgId::gen(stream_address.base(), identifier, base_branch, SUB_MESSAGE_NUM);
+        let rel_address = MsgId::gen(stream_address.base(), identifier, base_branch, SUB_MESSAGE_NUM as u32);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -1100,7 +1100,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor(base_branch)?;
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, base_branch, new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), &identifier, base_branch, new_cursor as u32);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -1187,7 +1187,7 @@ where
             .ok_or_else(|| Error::TopicNotFound(topic.clone()))?;
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor as u32);
 
         // Prepare HDF and PCF
         // All Keyload messages will attach to stream Announcement message spongos
@@ -1378,7 +1378,7 @@ where
             .ok_or_else(|| Error::TopicNotFound(topic.clone()))?;
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor as u32);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
@@ -1471,7 +1471,7 @@ where
 
         // Update own's cursor
         let new_cursor = self.next_cursor(&topic)?;
-        let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor);
+        let rel_address = MsgId::gen(stream_address.base(), &identifier, &topic, new_cursor as u32);
 
         // Prepare HDF and PCF
         // Spongos must be copied because wrapping mutates it
