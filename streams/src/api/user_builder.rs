@@ -27,6 +27,8 @@ pub struct UserBuilder<T> {
     psks: Vec<(PskId, Psk)>,
     /// Spongos Storage Type.
     lean: bool,
+    /// [`User`] [`State`] is_only_publisher flag
+    is_only_publisher: bool,
 }
 
 impl Default for UserBuilder<()> {
@@ -36,6 +38,7 @@ impl Default for UserBuilder<()> {
             transport: (),
             psks: Default::default(),
             lean: false,
+            is_only_publisher: false,
         }
     }
 }
@@ -66,6 +69,12 @@ impl<T> UserBuilder<T> {
         self
     }
 
+    /// Set the User Builder is_only_publisher state to true
+    pub fn is_only_publisher(mut self) -> Self {
+        self.is_only_publisher = true;
+        self
+    }
+
     /// Inject [`Transport`] Client instance into the User Builder
     ///
     /// # Arguments
@@ -79,6 +88,7 @@ impl<T> UserBuilder<T> {
             id: self.id,
             psks: self.psks,
             lean: self.lean,
+            is_only_publisher: self.is_only_publisher,
         }
     }
 
@@ -140,7 +150,7 @@ impl<T> UserBuilder<T> {
         T: IntoTransport<Trans>,
         Trans: for<'a> Transport<'a>,
     {
-        User::new(self.id, self.psks, self.transport.into(), self.lean)
+        User::new(self.id, self.psks, self.transport.into(), self.lean, self.is_only_publisher)
     }
 
     /// Recover a user instance from the builder parameters.

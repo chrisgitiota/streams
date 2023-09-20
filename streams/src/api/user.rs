@@ -94,6 +94,14 @@ struct State {
     /// stored.
     lean: bool,
 
+    /// Per default (is_only_publisher == false) the User will use the Transport for additional
+    /// communication to avoid stream management errors due to parallel message publishing.
+    /// If a stream has only one publisher (user having write access), the publishing User can set
+    /// is_only_publisher=true to avoid this additional Transport use.
+    /// This is especially useful in typical wireless sensor scenarios where the sensor is the
+    /// only publisher and the Transport usage is often very expensive.
+    is_only_publisher: bool,
+
     /// List of known branch topics.
     topics: HashSet<Topic>,
 }
@@ -122,7 +130,8 @@ impl<T> User<T> {
     /// * `psks`: A list of trusted pre shared keys.
     /// * `transport`: The transport to use for sending and receiving messages.
     /// * `lean`: If true, the client will store only required message states.
-    pub(crate) fn new<Psks>(user_id: Option<Identity>, psks: Psks, transport: T, lean: bool) -> Self
+    /// * `is_only_publisher`: Avoid additional Transport use in case this user is the only publisher in the stream.
+    pub(crate) fn new<Psks>(user_id: Option<Identity>, psks: Psks, transport: T, lean: bool, is_only_publisher: bool) -> Self
     where
         Psks: IntoIterator<Item = (PskId, Psk)>,
     {
@@ -146,6 +155,7 @@ impl<T> User<T> {
                 author_identifier: None,
                 base_branch: Default::default(),
                 lean,
+                is_only_publisher,
                 topics: Default::default(),
             },
         }
@@ -226,6 +236,11 @@ impl<T> User<T> {
     /// Returns true if [`User`] lean state configuration is true
     fn lean(&self) -> bool {
         self.state.lean
+    }
+
+    /// Returns the [`User`] state is_only_publisher flag state
+    fn is_only_publisher(&self) -> bool {
+        self.state.is_only_publisher
     }
 
     /// Returns an iterator over [`CursorStore`], producing tuples of [`Topic`], [`Permissioned`]
@@ -1406,7 +1421,7 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        if !self.transport.recv_message(message_address).await.is_err() {
+        if !self.state.is_only_publisher && !self.transport.recv_message(message_address).await.is_err() {
             return Err(Error::AddressUsed("signed packet", message_address));
         }
         let send_response = self
@@ -1497,7 +1512,7 @@ where
 
         // Attempt to send message
         let message_address = Address::new(stream_address.base(), rel_address);
-        if !self.transport.recv_message(message_address).await.is_err() {
+        if !self.state.is_only_publisher && !self.transport.recv_message(message_address).await.is_err() {
             return Err(Error::AddressUsed("tagged packet", message_address));
         }
         let send_response = self
@@ -1584,6 +1599,9 @@ impl ContentSizeof<State> for sizeof::Context {
         let lean = if user_state.lean { 1 } else { 0 };
         self.mask(Uint8::new(lean))?;
 
+        let is_only_publisher = if user_state.is_only_publisher { 1 } else { 0 };
+        self.mask(Uint8::new(is_only_publisher))?;
+
         self.commit()?.squeeze(Mac::new(32))
     }
 }
@@ -1655,6 +1673,9 @@ impl<'a> ContentWrap<State> for wrap::Context<&'a mut [u8]> {
         let lean = if user_state.lean { 1 } else { 0 };
         self.mask(Uint8::new(lean))?;
 
+        let is_only_publisher = if user_state.is_only_publisher { 1 } else { 0 };
+        self.mask(Uint8::new(is_only_publisher))?;
+
         self.commit()?.squeeze(Mac::new(32))
     }
 }
@@ -1721,6 +1742,10 @@ impl<'a> ContentUnwrap<State> for unwrap::Context<&'a [u8]> {
         self.mask(&mut lean)?;
         user_state.lean = lean.inner() == 1;
 
+        let mut is_only_publisher = Uint8::new(0);
+        self.mask(&mut is_only_publisher)?;
+        user_state.is_only_publisher = is_only_publisher.inner() == 1;
+
         self.commit()?.squeeze(Mac::new(32))
     }
 }
@@ -1729,7 +1754,7 @@ impl<T> Debug for User<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FormatResult {
         write!(
             f,
-            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n* lean: {}\n",
+            "\n* identifier: <{:?}>\n* topic: {}\n{:?}\n* PSKs: \n{}\n* messages:\n{}\n* lean: {}\n* is_only_publisher: {}\n",
             self.identifier(),
             self.base_branch(),
             self.state.cursor_store,
@@ -1743,7 +1768,8 @@ impl<T> Debug for User<T> {
                 .keys()
                 .map(|key| format!("\t<{}>\n", key))
                 .collect::<String>(),
-            self.state.lean
+            self.state.lean,
+            self.state.is_only_publisher,
         )
     }
 }
