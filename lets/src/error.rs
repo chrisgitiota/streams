@@ -115,6 +115,9 @@ pub enum Error {
     #[error("Iota client error for {0}: {1}")]
     IotaClient(&'static str, iota_sdk::client::error::Error),
 
+    #[error("Validation of send message success failed for address {0} with msg_index {1:x?}: {2}")]
+    SendValidation(Address, [u8; 32], String),
+
     #[error("message '{0}' not found in {1}")]
     MessageMissing(Address, &'static str),
 

@@ -82,6 +82,14 @@ pub trait MessageIndex<Message = TransportMessage> {
     /// to fetch the final value that is used to tag the message before it is send via the transport
     /// medium.
     fn get_tag_value(&self, msg_index: [u8; 32]) -> Result<Vec<u8>>;
+    /// This function is executed by the lets Client directly after a message has been send
+    /// to validate that the send process has been successful.
+    /// This allows the MessageIndex instance to e.g. check if the the message
+    /// has been successfully archived in the used data sink and that all involved services
+    /// have properly worked.
+    /// Returns true if the message has been successfully processed otherwise a false value
+    /// or error is returned.
+    async fn validate_successful_message_send(&self, msg_index: [u8; 32]) -> Result<bool>;
 }
 
 /// Localised mapping for tests and simulations

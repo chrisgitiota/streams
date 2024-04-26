@@ -31,6 +31,7 @@ use crate::{
         Transport,
         MessageIndex,
     },
+    alloc::string::ToString,
 };
 
 /// A [`Transport`] Client for sending and retrieving binary messages from an `IOTA Tangle` node.
@@ -98,14 +99,26 @@ where
         Message: 'async_trait,
     {
         let tag = self.msg_index.get_tag_value(address.to_msg_index())?;
-        self.iota_client
+        let ret_val = self.iota_client
             .build_block()
-            .with_tag(tag)
+            .with_tag(tag.clone())
             .with_data(msg.into())
             .finish()
             .await
             .map_err(|e| Error::IotaClient("sending message", e))?
-            .try_into()
+            .try_into();
+        match self.msg_index.validate_successful_message_send(address.to_msg_index()).await {
+            Ok(success) => {
+                if success {
+                    ret_val
+                } else {
+                    Err(Error::SendValidation(address, address.to_msg_index(), "success == false".to_string()))
+                }
+            },
+            Err(e) => {
+                Err(Error::SendValidation(address, address.to_msg_index(), format!("{:?}", e)))
+            }
+        }
     }
 
     /// Retrieves a message indexed at the provided [`Address`] from the tangle. Errors if no
