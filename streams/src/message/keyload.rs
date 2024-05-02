@@ -28,7 +28,7 @@
 //! ```
 // Rust
 use alloc::{boxed::Box, vec::Vec};
-use core::{iter::IntoIterator, marker::PhantomData};
+use core::{marker::PhantomData};
 
 // 3rd-party
 use async_trait::async_trait;
