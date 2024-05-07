@@ -76,7 +76,7 @@ impl<'a, Tsp: Transport<'a>> Transport<'a> for Rc<RefCell<Tsp>> {
 #[async_trait(?Send)]
 pub trait MessageIndex<Message = TransportMessage> {
     /// Return all messages that match the specified msg_index.
-    async fn get_messages_by_msg_index(&self, msg_index: [u8; 32]) -> Result<Vec<Message>>;
+    async fn get_messages_by_msg_index(&self, msg_index: [u8; 32], address: &Address) -> Result<Vec<Message>>;
     /// Indexing services may need to modify the msg_index, example given for filtering
     /// purposes. The get_tag_value() function should be used by transport Client implementations
     /// to fetch the final value that is used to tag the message before it is send via the transport

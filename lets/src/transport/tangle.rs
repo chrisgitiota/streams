@@ -129,7 +129,7 @@ where
     async fn recv_messages(&mut self, address: Address) -> Result<Vec<Message>> {
         let msgs = self
             .msg_index
-            .get_messages_by_msg_index(address.to_msg_index())
+            .get_messages_by_msg_index(address.to_msg_index(), &address)
             .await?;
 
         if msgs.is_empty() {
